@@ -87,8 +87,8 @@ template <typename Type> inline bool AssertImplementation(char const *File, char
 
 template <typename GotType, typename ExpectedType> inline bool AssertImplementationE(char const *File, char const *Function, int Line, char const *GotString, GotType const &Got, char const *ExpectedString, ExpectedType const &Expected)
 {
-#ifndef NDEBUG
 	bool Result = Got == Expected;
+#ifndef NDEBUG
 	if (!Result)
 	{
 		AssertStamp(File, Function, Line);
@@ -101,8 +101,8 @@ template <typename GotType, typename ExpectedType> inline bool AssertImplementat
 
 template <typename GotType, typename ExpectedType> inline bool AssertImplementationNE(char const *File, char const *Function, int Line, char const *GotString, GotType const &Got, char const *ExpectedString, ExpectedType const &Expected)
 {
-#ifndef NDEBUG
 	bool Result = Got != Expected;
+#ifndef NDEBUG
 	if (!Result)
 	{
 		AssertStamp(File, Function, Line);
@@ -115,8 +115,8 @@ template <typename GotType, typename ExpectedType> inline bool AssertImplementat
 
 template <typename GotType, typename ExpectedType> inline bool AssertImplementationLT(char const *File, char const *Function, int Line, char const *GotString, GotType const &Got, char const *ExpectedString, ExpectedType const &Expected)
 {
-#ifndef NDEBUG
 	bool Result = Got < Expected;
+#ifndef NDEBUG
 	if (!Result)
 	{
 		AssertStamp(File, Function, Line);
@@ -129,8 +129,8 @@ template <typename GotType, typename ExpectedType> inline bool AssertImplementat
 
 template <typename GotType, typename ExpectedType> inline bool AssertImplementationLTE(char const *File, char const *Function, int Line, char const *GotString, GotType const &Got, char const *ExpectedString, ExpectedType const &Expected)
 {
-#ifndef NDEBUG
 	bool Result = Got <= Expected;
+#ifndef NDEBUG
 	if (!Result)
 	{
 		AssertStamp(File, Function, Line);
@@ -142,8 +142,8 @@ template <typename GotType, typename ExpectedType> inline bool AssertImplementat
 }
 template <typename GotType, typename ExpectedType> inline bool AssertImplementationGT(char const *File, char const *Function, int Line, char const *GotString, GotType const &Got, char const *ExpectedString, ExpectedType const &Expected)
 {
-#ifndef NDEBUG
 	bool Result = Got > Expected;
+#ifndef NDEBUG
 	if (!Result)
 	{
 		AssertStamp(File, Function, Line);
@@ -155,8 +155,8 @@ template <typename GotType, typename ExpectedType> inline bool AssertImplementat
 }
 template <typename GotType, typename ExpectedType> inline bool AssertImplementationGTE(char const *File, char const *Function, int Line, char const *GotString, GotType const &Got, char const *ExpectedString, ExpectedType const &Expected)
 {
-#ifndef NDEBUG
 	bool Result = Got >= Expected;
+#ifndef NDEBUG
 	if (!Result)
 	{
 		AssertStamp(File, Function, Line);
@@ -168,8 +168,8 @@ template <typename GotType, typename ExpectedType> inline bool AssertImplementat
 }
 template <typename Got1Type, typename Got2Type> inline bool AssertImplementationOr(char const *File, char const *Function, int Line, char const *Got1String, Got1Type const &Got1, char const *Got2String, Got2Type const &Got2)
 {
-#ifndef NDEBUG
 	bool Result = Got1 || Got2;
+#ifndef NDEBUG
 	if (!Result)
 	{
 		AssertStamp(File, Function, Line);

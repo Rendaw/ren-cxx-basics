@@ -154,7 +154,8 @@ template <size_t Uniqueness, typename ExplicitT> std::ostream &operator <<(std::
 	{ Stream << *Value; return Stream; }
 
 #define StrictType(Type) ::ExplicitCastableT<__COUNTER__, Type>
-#define StrictCast(Value, ToType) (Value)(ExplicitT<ToType>())
+//#define StrictCast(Value, ToType) (Value)(ExplicitT<ToType>())
+#define StrictCast(StrictValue, ToType) static_cast<ToType>((StrictValue).Value)
 
 //================================================================================================================
 // Variants (algebraic types)
@@ -165,7 +166,25 @@ typedef char const * VariantTagT;
 #define VARIANTTAG typeid(CurrentT).name()
 #else
 typedef uintptr_t VariantTagT;
-#define VARIANTTAG reinterpret_cast<char const *>(&Get)
+template <typename VariantT> struct VariantIDT { static char Location; };
+template <typename VariantT> char VariantIDT<VariantT>::Location;
+template <typename VariantT> struct VariantIDT<VariantT *> : VariantIDT<VariantT> 
+	{ using VariantIDT<VariantT>::Location; };
+template <typename VariantT> struct VariantIDT<VariantT const *> : VariantIDT<VariantT> 
+	{ using VariantIDT<VariantT>::Location; };
+template <typename VariantT> struct VariantIDT<VariantT &> : VariantIDT<VariantT> 
+	{ using VariantIDT<VariantT>::Location; };
+template <typename VariantT> struct VariantIDT<VariantT &&> : VariantIDT<VariantT> 
+	{ using VariantIDT<VariantT>::Location; };
+template <typename VariantT> struct VariantIDT<VariantT const &> : VariantIDT<VariantT> 
+	{ using VariantIDT<VariantT>::Location; };
+//#define VARIANTTAG reinterpret_cast<uintptr_t>(&UnionT::UnionT)
+//#define VARIANTTAG reinterpret_cast<uintptr_t>((void(*)(UnionT &, UnionT const &, VariantInternalsT<CurrentT, RemainingT...> const &))&VariantInternalsT::VariantInternalsT)
+static_assert(&VariantIDT<int>::Location == &VariantIDT<int &>::Location, "VariantIDT broken.");
+static_assert(&VariantIDT<int>::Location == &VariantIDT<int *>::Location, "VariantIDT broken.");
+static_assert(&VariantIDT<int>::Location == &VariantIDT<int const *>::Location, "VariantIDT broken.");
+static_assert(&VariantIDT<int>::Location == &VariantIDT<int &&>::Location, "VariantIDT broken.");
+#define VARIANTTAG reinterpret_cast<uintptr_t>(&VariantIDT<decltype(this)>::Location)
 #endif
 	
 template <typename ...TypesT> struct VariantInternalsT;
@@ -307,19 +326,19 @@ template <> struct VariantInternalsT<>
 	
 	VariantInternalsT(UnionT &Union, UnionT const &OtherUnion, VariantInternalsT<> const &Other) : Tag(Other.Tag) {}
 	
-	VariantInternalsT(UnionT &Union, UnionT &&OtherUnion, VariantInternalsT<> &Other) : Tag(Other.Tag) { Other.Tag = nullptr; }
+	VariantInternalsT(UnionT &Union, UnionT &&OtherUnion, VariantInternalsT<> &Other) : Tag(Other.Tag) { Other.Tag = 0; }
 	
-	VariantInternalsT(VariantInternalsT<> &&Other) : Tag(Other.Tag) { Other.Tag = nullptr; }
+	VariantInternalsT(VariantInternalsT<> &&Other) : Tag(Other.Tag) { Other.Tag = 0; }
 
 	template <typename TypeT> bool Is(ExplicitT<TypeT>) const { return false; }
 	
-	void Set(UnionT &Union, UnionT const &OtherUnion, VariantTagT const &OtherTag) { if (OtherTag == nullptr) Tag = nullptr; }
+	void Set(UnionT &Union, UnionT const &OtherUnion, VariantTagT const &OtherTag) { if (OtherTag == 0) Tag = 0; }
 	
-	void Set(UnionT &Union, UnionT &&OtherUnion, VariantTagT const &OtherTag) { if (OtherTag == nullptr) Tag = nullptr; }
+	void Set(UnionT &Union, UnionT &&OtherUnion, VariantTagT const &OtherTag) { if (OtherTag == 0) Tag = 0; }
 	
-	template <typename ValueT> InvalidT &Set(ExplicitT<InvalidT> ValueTag, UnionT &Union, ValueT const &Value) { Tag = nullptr; return *reinterpret_cast<InvalidT *>(0); }
+	template <typename ValueT> InvalidT &Set(ExplicitT<InvalidT> ValueTag, UnionT &Union, ValueT const &Value) { Tag = 0; return *reinterpret_cast<InvalidT *>(0); }
 	
-	template <typename ValueT> InvalidT &Set(ExplicitT<InvalidT> ValueTag, UnionT &Union, ValueT &&Value) { Tag = nullptr; return *reinterpret_cast<InvalidT *>(0); }
+	template <typename ValueT> InvalidT &Set(ExplicitT<InvalidT> ValueTag, UnionT &Union, ValueT &&Value) { Tag = 0; return *reinterpret_cast<InvalidT *>(0); }
 
 	void Destroy(UnionT &Union) {}
 	
@@ -336,7 +355,7 @@ template <typename... TypesT> struct VariantT : private VariantInternalsT<TypesT
 		#define Union this->UnionBytes
 		#define ValueUnion Value.UnionBytes
 	public:
-		VariantT(void) : InternalsT(nullptr) {}
+		VariantT(void) : InternalsT(0) {}
 		
 		template <typename ValueT> explicit VariantT(ValueT const &Value) : 
 			InternalsT(ExplicitT<ValueT>(), Union, Value) {}
