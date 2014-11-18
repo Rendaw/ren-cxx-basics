@@ -106,12 +106,14 @@ template <size_t Uniqueness, typename ValueT> struct ExplicitCastableT<Uniquenes
 	ThisType operator +=(ValueT const &That) { return ThisType(Value += That); }
 
 	ThisType operator ++(void) { return ++**this; }
+	ThisType operator ++(int) { auto Out = ThisType(**this); ++**this; return Out; }
 
 	ThisType operator -=(ThisType const &That) { return ThisType(Value -= *That); }
 	ThisType operator -=(ValueT const &That) { return ThisType(Value -= That); }
 	template <typename ThatType> ThisType operator -=(ThatType const &) = delete;
 
 	ThisType operator --(void) { return --**this; }
+	ThisType operator --(int) { auto Out = ThisType(**this); --**this; return Out; }
 
 	ThisType operator *=(ThisType const &That) { return ThisType(Value *= *That); }
 	ThisType operator *=(ValueT const &That) { return ThisType(Value *= That); }
