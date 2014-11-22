@@ -6,6 +6,9 @@
 #include <cstring>
 #include <type_traits>
 
+// Notes
+// std::function can't hold lambdas that capture non-copyable types.  This is a proper reimplementation (although labmdas only).
+
 template <typename signature_type>
 struct function;
 

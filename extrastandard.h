@@ -26,6 +26,53 @@ template <typename VectorT, typename FunctionT> void VectorRemove(VectorT &Vecto
 	{ Vector.erase(std::remove_if(Vector.begin(), Vector.end(), Filter), Vector.end()); }
 
 //----------------------------------------------------------------------------------------------------------------
+// Won't be included in C++14 lolololol
+template <typename type> struct fixed_vector : std::vector<type>
+{
+	// Notes
+	// std::vector defines a copy constructor even if type is not copy constructible... this fixes that
+	// std::vector only uses move constructor for resizes and other operations if type has a noexcept destructor... and std::unique_ptr does not.  This also hacks around that.
+
+	using std::vector<type>::vector;
+
+	~fixed_vector(void) {}
+
+	fixed_vector(void) : std::vector<type>() {}
+
+	fixed_vector(fixed_vector &&other) noexcept : std::vector<type>(std::move(other)) {} // Hack... like everything else in this file
+
+	template 
+	<
+		typename duplicate = type, 
+		typename std::enable_if<std::is_copy_constructible<duplicate>::value>::type * = nullptr
+	> 
+	fixed_vector(fixed_vector const &) = delete;
+
+	template 
+	<
+		typename duplicate = type, 
+		typename std::enable_if<!std::is_copy_constructible<duplicate>::value>::type * = nullptr
+	> 
+	fixed_vector(fixed_vector const &other) : std::vector<type>(other) {}
+	
+	fixed_vector<type> &operator =(fixed_vector &&other) { std::vector<type>::operator =(std::move(other)); return *this; }
+	
+	template 
+	<
+		typename duplicate = type, 
+		typename std::enable_if<std::is_copy_constructible<duplicate>::value>::type * = nullptr
+	> 
+	fixed_vector<type> &operator =(fixed_vector const &) = delete;
+
+	template 
+	<
+		typename duplicate = type, 
+		typename std::enable_if<!std::is_copy_constructible<duplicate>::value>::type * = nullptr
+	> 
+	fixed_vector<type> &operator =(fixed_vector const &other) { std::vector<type>::operator =(other); return *this; }
+};
+
+//----------------------------------------------------------------------------------------------------------------
 // r-value string serialization and deserialization
 struct StringT
 {
