@@ -7,6 +7,8 @@
 #include <functional>
 #include <algorithm>
 
+template <typename TargetT> struct ExplicitT {};
+
 //----------------------------------------------------------------------------------------------------------------
 // Will be included in C++14 lolololol
 template<typename T, typename... ArgsT> std::unique_ptr<T> make_unique(ArgsT &&... Args)
