@@ -23,6 +23,14 @@ template <typename ValueT> void make_unique(std::unique_ptr<ValueT> &Target, Val
 template <typename ValueT, typename ...ArgumentsT> void make_unique(std::unique_ptr<ValueT> &Target, ArgumentsT... Arguments) { Target = make_unique<ValueT>(std::forward<ArgumentsT>(Arguments)...); }
 
 //----------------------------------------------------------------------------------------------------------------
+// To identify tuples and tuple-likes in template args
+// Specialize to extend to derived types
+template <typename ValueT> struct IsTuply
+	{ static constexpr bool Result = false; };
+template <typename ...InnerT> struct IsTuply<std::tuple<InnerT...>> 
+	{ static constexpr bool Result = true; };
+
+//----------------------------------------------------------------------------------------------------------------
 // Remove values for vector
 template <typename VectorT, typename FunctionT> void VectorRemove(VectorT &Vector, FunctionT const &Filter)
 	{ Vector.erase(std::remove_if(Vector.begin(), Vector.end(), Filter), Vector.end()); }

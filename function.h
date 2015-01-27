@@ -128,6 +128,12 @@ struct function<return_type(arg_types ...)>
 			if (!data) throw std::runtime_error("Calling unset function.");
 			return call_data(data, std::forward<arg_types>(args)...);
 		}
+		
+		return_type operator ()(arg_types ...args) const
+		{
+			if (!data) throw std::runtime_error("Calling unset function.");
+			return call_data(data, std::forward<arg_types>(args)...);
+		}
 
 		// METHODS
 		template <typename lambda_type> 

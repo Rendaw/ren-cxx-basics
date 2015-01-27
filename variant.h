@@ -8,134 +8,159 @@
 #include <string>
 
 #include "extrastandard.h"
-#include "type.h"
 
 // Variants (algebraic types)
 
-#if !defined(NDEBUG) && (defined(_CPPRTTI) || defined(__GXX_RTTI))
-#include <typeinfo>
-typedef char const * VariantTagT;
-#define VARIANTTAG typeid(CurrentT).name()
-#else
-typedef uintptr_t VariantTagT;
-template <typename VariantT> struct VariantIDT { static char Location; };
-template <typename VariantT> char VariantIDT<VariantT>::Location;
-template <typename VariantT> struct VariantIDT<VariantT *> : VariantIDT<VariantT> 
-	{ using VariantIDT<VariantT>::Location; };
-template <typename VariantT> struct VariantIDT<VariantT const *> : VariantIDT<VariantT> 
-	{ using VariantIDT<VariantT>::Location; };
-template <typename VariantT> struct VariantIDT<VariantT &> : VariantIDT<VariantT> 
-	{ using VariantIDT<VariantT>::Location; };
-template <typename VariantT> struct VariantIDT<VariantT &&> : VariantIDT<VariantT> 
-	{ using VariantIDT<VariantT>::Location; };
-template <typename VariantT> struct VariantIDT<VariantT const &> : VariantIDT<VariantT> 
-	{ using VariantIDT<VariantT>::Location; };
-//#define VARIANTTAG reinterpret_cast<uintptr_t>(&UnionT::UnionT)
-//#define VARIANTTAG reinterpret_cast<uintptr_t>((void(*)(UnionT &, UnionT const &, VariantInternalsT<CurrentT, RemainingT...> const &))&VariantInternalsT::VariantInternalsT)
-static_assert(&VariantIDT<int>::Location == &VariantIDT<int &>::Location, "VariantIDT broken.");
-static_assert(&VariantIDT<int>::Location == &VariantIDT<int *>::Location, "VariantIDT broken.");
-static_assert(&VariantIDT<int>::Location == &VariantIDT<int const *>::Location, "VariantIDT broken.");
-static_assert(&VariantIDT<int>::Location == &VariantIDT<int &&>::Location, "VariantIDT broken.");
-#define VARIANTTAG reinterpret_cast<uintptr_t>(&VariantIDT<decltype(this)>::Location)
-#endif
-	
-template <typename ...TypesT> struct VariantInternalsT;
+template <typename TestT, typename ...ListT> 
+	struct ContainsT;
 
-template <typename CurrentT, typename ...RemainingT> struct VariantInternalsT<CurrentT, RemainingT...> : VariantInternalsT<RemainingT...>
+template <typename TestT>
+	struct ContainsT<TestT>
+	{ static constexpr bool Result = false; };
+
+template <typename TestT, typename ... RemainingT>
+	struct ContainsT<TestT, TestT, RemainingT...>
+	{ static constexpr bool Result = true; };
+
+template <typename TestT, typename NextT, typename ... RemainingT>
+	struct ContainsT<TestT, NextT, RemainingT...>
+	{ static constexpr bool Result = ContainsT<TestT, RemainingT...>::Result; };
+
+typedef uint8_t VariantTagT;
+	
+template <uint8_t Index, typename ...TypesT> struct VariantInternalsT;
+
+template <uint8_t Index, typename CurrentT, typename ...RemainingT> 
+	struct VariantInternalsT<Index, CurrentT, RemainingT...> : VariantInternalsT<Index + 1, RemainingT...>
 {
+#define ThisT VariantInternalsT<Index, CurrentT, RemainingT...>
+#define VariantNextT VariantInternalsT<Index + 1, RemainingT...>
+	//typedef VariantInternalsT<Index, CurrentT, RemainingT...> ThisT;
+	//typedef VariantInternalsT<Index + 1, RemainingT...> VariantNextT;
+
 	union UnionT
 	{
 		UnionT(void) {} 
 		~UnionT(void) {} 
 		CurrentT Value;
-		typename VariantInternalsT<RemainingT...>::UnionT Next;
+		typename VariantNextT::UnionT Next;
 	};
 	
-	using VariantInternalsT<RemainingT...>::VariantInternalsT;
+	using VariantNextT::VariantInternalsT;
 	
 	template <typename TypeT, typename ValueT> VariantInternalsT(ExplicitT<TypeT> ValueTag, UnionT &Union, ValueT const &Value) : 
-		VariantInternalsT<RemainingT...>(ValueTag, Union.Next, Value) {}
+		VariantNextT(ValueTag, Union.Next, Value) {}
 		
 	template <typename TypeT, typename ValueT> VariantInternalsT(ExplicitT<TypeT> ValueTag, UnionT &Union, ValueT &&Value) : 
-		VariantInternalsT<RemainingT...>(ValueTag, Union.Next, std::move(Value)) {}
+		VariantNextT(ValueTag, Union.Next, std::move(Value)) {}
 		
 	template <typename ValueT> VariantInternalsT(ExplicitT<CurrentT>, UnionT &Union, ValueT const &Value) : 
-		VariantInternalsT<RemainingT...>(VARIANTTAG)
+		VariantNextT(Index)
 		{ new (&Union.Value) CurrentT(Value); }
 
 	template <typename ValueT> VariantInternalsT(ExplicitT<CurrentT>, UnionT &Union, ValueT &&Value) : 
-		VariantInternalsT<RemainingT...>(VARIANTTAG)
+		VariantNextT(Index)
 		{ new (&Union.Value) CurrentT(std::move(Value)); }
 		
-	VariantInternalsT(UnionT &Union, UnionT const &OtherUnion, VariantInternalsT<CurrentT, RemainingT...> const &Other) : 
-		VariantInternalsT<RemainingT...>(Union.Next, OtherUnion.Next, Other)
-		{ if (Other.Tag == VARIANTTAG) new (&Union.Value) CurrentT(OtherUnion.Value); }
+	VariantInternalsT(UnionT &Union, UnionT const &OtherUnion, ThisT const &Other) : 
+		VariantNextT(Union.Next, OtherUnion.Next, Other)
+		{ if (Other.Tag == Index) new (&Union.Value) CurrentT(OtherUnion.Value); }
 
-	VariantInternalsT(UnionT &Union, UnionT &&OtherUnion, VariantInternalsT<CurrentT, RemainingT...> &Other) : 
-		VariantInternalsT<RemainingT...>(Union.Next, OtherUnion.Next, std::move(Other))
-		{ if (Other.Tag == VARIANTTAG) new (&Union.Value) CurrentT(std::move(OtherUnion.Value)); }
-
-	using VariantInternalsT<RemainingT...>::Is;
-
-	bool Is(ExplicitT<CurrentT>) const { return this->Tag == VARIANTTAG; }
+	VariantInternalsT(UnionT &Union, UnionT &&OtherUnion, ThisT &Other) : 
+		VariantNextT(Union.Next, OtherUnion.Next, std::move(Other))
+		{ if (Other.Tag == Index) new (&Union.Value) CurrentT(std::move(OtherUnion.Value)); }
 	
-	using VariantInternalsT<RemainingT...>::Set;
+	template <typename CallbackT> 
+		auto Examine(UnionT &Union, CallbackT const &Callback) -> decltype(Callback(nullptr))
+	{ 
+		if (this->Tag == Index) return Callback(Union.Value);
+		return VariantNextT::Examine(Union.Next, Callback);
+	}
+	
+	template <typename CallbackT> 
+		auto Examine(UnionT const &Union, CallbackT const &Callback) const -> decltype(Callback(nullptr))
+	{ 
+		if (this->Tag == Index) return Callback(Union.Value);
+		return VariantNextT::Examine(Union.Next, Callback);
+	}
+
+	using VariantNextT::Is;
+
+	bool Is(ExplicitT<CurrentT>) const { return this->Tag == Index; }
+	
+	using VariantNextT::Set;
 		
 	template <typename TypeT, typename ValueT> TypeT &Set(ExplicitT<TypeT> ValueTag, UnionT &Union, ValueT const &Value)
 	{
-		if (this->Tag == VARIANTTAG) DestroyImmediately(Union);
+		if (this->Tag == Index) DestroyImmediately(Union);
 		return Set(ValueTag, Union.Next, Value);
 	}
 
 	template <typename TypeT, typename ValueT> TypeT &Set(ExplicitT<TypeT> ValueTag, UnionT &Union, ValueT &&Value)
 	{
-		if (this->Tag == VARIANTTAG) DestroyImmediately(Union);
+		if (this->Tag == Index) DestroyImmediately(Union);
 		return Set(ValueTag, Union.Next, std::move(Value));
 	}
 	
 	template <typename ValueT> CurrentT &Set(ExplicitT<CurrentT>, UnionT &Union, ValueT const &Value)
 	{
-		if (this->Tag == VARIANTTAG) { return Union.Value = Value; }
+		if (this->Tag == Index) { return Union.Value = Value; }
 		if (this->Tag) Destroy(Union);
-		this->Tag = VARIANTTAG;
+		this->Tag = Index;
 		new (&Union.Value) CurrentT(Value);
 		return Union.Value;
 	}
 	
 	template <typename ValueT> CurrentT &Set(ExplicitT<CurrentT>, UnionT &Union, ValueT &&Value)
 	{
-		if (this->Tag == VARIANTTAG) { return Union.Value = std::move(Value); }
+		if (this->Tag == Index) { return Union.Value = std::move(Value); }
 		if (this->Tag) Destroy(Union);
-		this->Tag = VARIANTTAG;
+		this->Tag = Index;
 		new (&Union.Value) CurrentT(std::move(Value));
 		return Union.Value;
 	}
 	
 	void Set(UnionT &Union, UnionT const &OtherUnion, VariantTagT const &OtherTag)
 	{
-		if (OtherTag == VARIANTTAG) Set(ExplicitT<CurrentT>(), Union, OtherUnion.Value);
+		if (OtherTag == Index) Set(ExplicitT<CurrentT>(), Union, OtherUnion.Value);
 		else 
 		{
-			if (this->Tag == VARIANTTAG) DestroyImmediately(Union);
+			if (this->Tag == Index) DestroyImmediately(Union);
 			Set(Union.Next, OtherUnion.Next, OtherTag);
 		}
 	}
 	
 	void Set(UnionT &Union, UnionT &&OtherUnion, VariantTagT const &OtherTag)
 	{
-		if (OtherTag == VARIANTTAG) Set(ExplicitT<CurrentT>(), Union, std::move(OtherUnion.Value));
+		if (OtherTag == Index) Set(ExplicitT<CurrentT>(), Union, std::move(OtherUnion.Value));
 		else 
 		{
-			if (this->Tag == VARIANTTAG) DestroyImmediately(Union);
-			VariantInternalsT<RemainingT...>::Set(Union.Next, std::move(OtherUnion.Next), OtherTag);
+			if (this->Tag == Index) DestroyImmediately(Union);
+			VariantNextT::Set(Union.Next, std::move(OtherUnion.Next), OtherTag);
 		}
+	}
+
+	template <typename CallbackT> 
+		auto SetByTag(UnionT &Union, VariantTagT const &Tag, CallbackT const &Callback) -> decltype(VariantNextT::SetByTag(Callback))
+	{ 
+		if (Tag == Index) 
+		{
+			if (this->Tag != Index) 
+			{
+				Destroy(Union);
+				this->Tag = Index;
+				new (&Union.Value) CurrentT;
+			}
+			return Callback(Union.Value);
+		}
+		return VariantNextT::SetByTag(Union.Next, Tag, Callback); 
 	}
 	
 	template <typename TypeT> TypeT &Get(ExplicitT<TypeT>, UnionT &Union) 
-		{ return VariantInternalsT<RemainingT...>::Get(ExplicitT<TypeT>(), Union.Next); }
+		{ return VariantNextT::Get(ExplicitT<TypeT>(), Union.Next); }
 		
 	template <typename TypeT> TypeT const &Get(ExplicitT<TypeT>, UnionT const &Union) const
-		{ return VariantInternalsT<RemainingT...>::Get(ExplicitT<TypeT>(), Union.Next); }
+		{ return VariantNextT::Get(ExplicitT<TypeT>(), Union.Next); }
 	
 	CurrentT &Get(ExplicitT<CurrentT>, UnionT &Union)
 	{
@@ -150,22 +175,27 @@ template <typename CurrentT, typename ...RemainingT> struct VariantInternalsT<Cu
 	}
 		
 	void DestroyImmediately(UnionT &Union)
-		{ AssertE(this->Tag, VARIANTTAG); Union.Value.~CurrentT(); }
+		{ AssertE(this->Tag, Index); Union.Value.~CurrentT(); }
 	
 	void DestroyImmediately(UnionT const &Union) const 
-		{ AssertE(this->Tag, VARIANTTAG); Union.Value.~CurrentT(); }
+		{ AssertE(this->Tag, Index); Union.Value.~CurrentT(); }
 		
-	using VariantInternalsT<RemainingT...>::Destroy;
+	using VariantNextT::Destroy;
 	
 	void Destroy(UnionT &Union)
-		{ if (this->Tag == VARIANTTAG) Union.Value.~CurrentT(); else Destroy(Union.Next); }
+		{ if (this->Tag == Index) Union.Value.~CurrentT(); else Destroy(Union.Next); }
 	
 	void Destroy(UnionT const &Union) const 
-		{ if (this->Tag == VARIANTTAG) Union.Value.~CurrentT(); else Destroy(Union.Next); }
+		{ if (this->Tag == Index) Union.Value.~CurrentT(); else Destroy(Union.Next); }
+
+#undef ThisT
+#undef VariantNextT
 };
 
-template <> struct VariantInternalsT<>
+template <uint8_t Index> struct VariantInternalsT<Index>
 {
+	typedef VariantInternalsT<Index> ThisT;
+
 	struct InvalidT {};
 	union UnionT 
 	{ 
@@ -176,11 +206,19 @@ template <> struct VariantInternalsT<>
 	
 	VariantInternalsT(VariantTagT Tag) : Tag(Tag) {}
 	
-	VariantInternalsT(UnionT &Union, UnionT const &OtherUnion, VariantInternalsT<> const &Other) : Tag(Other.Tag) {}
+	VariantInternalsT(UnionT &Union, UnionT const &OtherUnion, ThisT const &Other) : Tag(Other.Tag) {}
 	
-	VariantInternalsT(UnionT &Union, UnionT &&OtherUnion, VariantInternalsT<> &Other) : Tag(Other.Tag) { Other.Tag = 0; }
+	VariantInternalsT(UnionT &Union, UnionT &&OtherUnion, ThisT &Other) : Tag(Other.Tag) { Other.Tag = 0; }
 	
-	VariantInternalsT(VariantInternalsT<> &&Other) : Tag(Other.Tag) { Other.Tag = 0; }
+	VariantInternalsT(ThisT &&Other) : Tag(Other.Tag) { Other.Tag = 0; }
+		
+	template <typename CallbackT> 
+		auto Examine(UnionT &Union, CallbackT const &Callback) -> decltype(Callback(nullptr))
+		{ return {}; }
+	
+	template <typename CallbackT> 
+		auto Examine(UnionT const &Union, CallbackT const &Callback) const -> decltype(Callback(nullptr))
+		{ return {}; }
 
 	template <typename TypeT> bool Is(ExplicitT<TypeT>) const { return false; }
 	
@@ -191,6 +229,10 @@ template <> struct VariantInternalsT<>
 	template <typename ValueT> InvalidT &Set(ExplicitT<InvalidT> ValueTag, UnionT &Union, ValueT const &Value) { Tag = 0; return *reinterpret_cast<InvalidT *>(0); }
 	
 	template <typename ValueT> InvalidT &Set(ExplicitT<InvalidT> ValueTag, UnionT &Union, ValueT &&Value) { Tag = 0; return *reinterpret_cast<InvalidT *>(0); }
+	
+	template <typename CallbackT> 
+		auto SetByTag(UnionT &Union, VariantTagT const &Tag, CallbackT const &Callback) -> decltype(Callback(nullptr))
+		{ return {}; }
 
 	void Destroy(UnionT &Union) {}
 	
@@ -199,21 +241,25 @@ template <> struct VariantInternalsT<>
 	std::string Dump(void) const { return StringT() << Tag; }
 };
 	
-template <typename... TypesT> struct VariantT : private VariantInternalsT<TypesT...>
+template <typename... TypesT> struct VariantT : private VariantInternalsT<1, TypesT...>
 {
 	protected:
-		typedef VariantInternalsT<TypesT...> InternalsT;
+		typedef VariantInternalsT<1, TypesT...> InternalsT;
 		typename InternalsT::UnionT UnionBytes;
 		#define Union this->UnionBytes
 		#define ValueUnion Value.UnionBytes
 	public:
 		VariantT(void) : InternalsT(0) {}
 		
-		template <typename ValueT> explicit VariantT(ValueT const &Value) : 
-			InternalsT(ExplicitT<ValueT>(), Union, Value) {}
+		template <typename ValueT> 
+			explicit VariantT(ValueT const &Value) : 
+				InternalsT(ExplicitT<ValueT>(), Union, Value) 
+			{ static_assert(ContainsT<ValueT, TypesT...>::Result, "Value type not in variant."); }
 			
-		template <typename TypeT, typename ValueT> VariantT(ExplicitT<TypeT> ValueTag, ValueT const &Value) : 
-			InternalsT(ValueTag, Union, Value) {}
+		template <typename TypeT, typename ValueT> 
+			VariantT(ExplicitT<TypeT> ValueTag, ValueT const &Value) : 
+				InternalsT(ValueTag, Union, Value)
+			{ static_assert(ContainsT<TypeT, TypesT...>::Result, "Value type not in variant."); }
 			
 		template 
 		<
@@ -221,7 +267,8 @@ template <typename... TypesT> struct VariantT : private VariantInternalsT<TypesT
 			typename = typename std::enable_if<std::is_same<ValueT, typename std::decay<ValueT>::type>::value>::type
 		> 
 			VariantT(ValueT &&Value) : 
-			InternalsT(ExplicitT<ValueT>(), Union, std::move(Value)) {}
+				InternalsT(ExplicitT<ValueT>(), Union, std::move(Value))
+			{ static_assert(ContainsT<ValueT, TypesT...>::Result, "Value type not in variant."); }
 			
 		template // C++ is my favorite language
 		<
@@ -230,7 +277,8 @@ template <typename... TypesT> struct VariantT : private VariantInternalsT<TypesT
 			typename = typename std::enable_if<std::is_same<TypeT, typename std::decay<TypeT>::type>::value>::type
 		> 
 			VariantT(ExplicitT<TypeT> ValueTag, ValueT &&Value) : 
-			InternalsT(ValueTag, Union, std::move(Value)) {}
+				InternalsT(ValueTag, Union, std::move(Value))
+			{ static_assert(ContainsT<TypeT, TypesT...>::Result, "Value type not in variant."); }
 			
 		VariantT(VariantT<TypesT...> const &Value) : InternalsT(Union, ValueUnion, Value) {}
 		
@@ -238,17 +286,31 @@ template <typename... TypesT> struct VariantT : private VariantInternalsT<TypesT
 		
 		~VariantT(void) { this->Destroy(Union); }
 		
-		void Clear(void) { Destroy(Union); this->Tag = nullptr; }
+		void Clear(void) { Destroy(Union); this->Tag = 0; }
+
+		template <typename CallbackT> 
+			auto Examine(CallbackT const &Callback) -> decltype(InternalsT::Examine(Callback))
+			{ return InternalsT::Examine(Union, Callback); }
+		
+		template <typename CallbackT> 
+			auto Examine(CallbackT const &Callback) const -> decltype(InternalsT::Examine(Callback))
+			{ return InternalsT::Examine(Union, Callback); }
 		
 		operator bool(void) const { return this->Tag; }
 		
 		bool operator !(void) const { return !this->Tag; }
 		
 		template <typename ValueT> ValueT &operator =(ValueT const &Value) 
-			{ return InternalsT::Set(ExplicitT<ValueT>(), Union, Value); }
+		{ 
+			static_assert(ContainsT<ValueT, TypesT...>::Result, "Value type not in variant.");
+			return InternalsT::Set(ExplicitT<ValueT>(), Union, Value); 
+		}
 			
 		template <typename ValueT> ValueT &operator =(ValueT &&Value) 
-			{ return InternalsT::Set(ExplicitT<ValueT>(), Union, std::move(Value)); }
+		{ 
+			static_assert(ContainsT<ValueT, TypesT...>::Result, "Value type not in variant.");
+			return InternalsT::Set(ExplicitT<ValueT>(), Union, std::move(Value)); 
+		}
 		
 		VariantT<TypesT...> &operator =(VariantT<TypesT...> const &Value) 
 			{ InternalsT::Set(Union, ValueUnion, Value.Tag); return *this; }
@@ -259,20 +321,47 @@ template <typename... TypesT> struct VariantT : private VariantInternalsT<TypesT
 		void Unset(void) { InternalsT::Set(ExplicitT<typename InternalsT::InvalidT>(), Union, 0); }
 		
 		template <typename TypeT> bool Is(void) const 
-			{ return InternalsT::Is(ExplicitT<TypeT>()); }
+		{ 
+			static_assert(ContainsT<TypeT, TypesT...>::Result, "Type not in variant.");
+			return InternalsT::Is(ExplicitT<TypeT>()); 
+		}
 		
 		template <typename TypeT, typename ValueT> TypeT &Set(ValueT const &Value) 
-			{ return InternalsT::Set(ExplicitT<TypeT>(), Union, Value); }
+		{ 
+			static_assert(ContainsT<TypeT, TypesT...>::Result, "Type not in variant.");
+			return InternalsT::Set(ExplicitT<TypeT>(), Union, Value); 
+		}
 			
 		template <typename TypeT, typename ValueT> TypeT &Set(ValueT &&Value) 
-			{ return InternalsT::Set(ExplicitT<TypeT>(), Union, std::move(Value)); }
-			
-		template <typename TypeT> TypeT &Get(void) { return InternalsT::Get(ExplicitT<TypeT>(), Union); }
+		{ 
+			static_assert(ContainsT<TypeT, TypesT...>::Result, "Type not in variant.");
+			return InternalsT::Set(ExplicitT<TypeT>(), Union, std::move(Value)); 
+		}
 		
-		template <typename TypeT> TypeT const &Get(void) const { return InternalsT::Get(ExplicitT<TypeT>(), Union); }
+		template <typename CallbackT> 
+			auto SetByTag(VariantTagT const &Tag, CallbackT const &Callback) -> decltype(InternalsT::SetByTag(Callback))
+			{ return InternalsT::SetByTag(Union, Tag, Callback); }
+			
+		template <typename TypeT> TypeT &Get(void) 
+		{ 
+			static_assert(ContainsT<TypeT, TypesT...>::Result, "Type not in variant.");
+			return InternalsT::Get(ExplicitT<TypeT>(), Union); 
+		}
+		
+		template <typename TypeT> TypeT const &Get(void) const 
+		{ 
+			static_assert(ContainsT<TypeT, TypesT...>::Result, "Type not in variant.");
+			return InternalsT::Get(ExplicitT<TypeT>(), Union); 
+		}
 
-		using VariantInternalsT<TypesT...>::Dump;
+		using InternalsT::Dump;
 };
+
+template <typename ValueT> struct IsVariant 
+	{ static const bool Result = false; };
+
+template <typename ...InnerT> struct IsVariant<VariantT<InnerT...>> 
+	{ static const bool Result = true; };
 
 //----------------------------------------------------------------------------------------------------------------
 // Optional (none or type)
@@ -332,6 +421,9 @@ template <typename TypeT> struct OptionalT : public VariantT<TypeT>
 			{ return Access(&VariantT<TypeT>::template Get<TypeT>()); }
 };
 
+template <typename InnerT> struct IsVariant<OptionalT<InnerT>> 
+	{ static const bool Result = true; };
+
 //----------------------------------------------------------------------------------------------------------------
 // Error variants (error or type)
 template <typename DefaultT, typename AltT> struct DefaultVariantT : public VariantT<DefaultT, AltT>
@@ -350,6 +442,9 @@ template <typename DefaultT, typename AltT> struct DefaultVariantT : public Vari
 
 	AltT const &Alt(void) const { return VariantT<DefaultT, AltT>::template Get<AltT>(); }
 };
+
+template <typename DefaultT, typename AltT> struct IsVariant<DefaultVariantT<DefaultT, AltT>> 
+	{ static const bool Result = true; };
 
 /*template <typename ErrorT, typename TypeT> struct ErrorOrT : public VariantT<ErrorT, TypeT>
 {
