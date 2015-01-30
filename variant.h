@@ -70,18 +70,18 @@ template <uint8_t Index, typename CurrentT, typename ...RemainingT>
 		VariantNextT(Union.Next, OtherUnion.Next, std::move(Other))
 		{ if (Other.Tag == Index) new (&Union.Value) CurrentT(std::move(OtherUnion.Value)); }
 	
-	template <typename CallbackT> 
-		auto Examine(UnionT &Union, CallbackT const &Callback) -> decltype(Callback(nullptr))
+	template <typename ReturnT, typename CallbackT> 
+		ReturnT Examine(UnionT &Union, CallbackT const &Callback)
 	{ 
 		if (this->Tag == Index) return Callback(Union.Value);
-		return VariantNextT::Examine(Union.Next, Callback);
+		return VariantNextT::template Examine<ReturnT>(Union.Next, Callback);
 	}
 	
-	template <typename CallbackT> 
-		auto Examine(UnionT const &Union, CallbackT const &Callback) const -> decltype(Callback(nullptr))
+	template <typename ReturnT, typename CallbackT> 
+		ReturnT Examine(UnionT const &Union, CallbackT const &Callback) const
 	{ 
 		if (this->Tag == Index) return Callback(Union.Value);
-		return VariantNextT::Examine(Union.Next, Callback);
+		return VariantNextT::template Examine<ReturnT>(Union.Next, Callback);
 	}
 
 	using VariantNextT::Is;
@@ -140,8 +140,8 @@ template <uint8_t Index, typename CurrentT, typename ...RemainingT>
 		}
 	}
 
-	template <typename CallbackT> 
-		auto SetByTag(UnionT &Union, VariantTagT const &Tag, CallbackT const &Callback) -> decltype(VariantNextT::SetByTag(Callback))
+	template <typename ReturnT, typename CallbackT> 
+		ReturnT SetByTag(UnionT &Union, VariantTagT const &Tag, CallbackT const &Callback)
 	{ 
 		if (Tag == Index) 
 		{
@@ -153,7 +153,7 @@ template <uint8_t Index, typename CurrentT, typename ...RemainingT>
 			}
 			return Callback(Union.Value);
 		}
-		return VariantNextT::SetByTag(Union.Next, Tag, Callback); 
+		return VariantNextT::template SetByTag<ReturnT>(Union.Next, Tag, Callback); 
 	}
 	
 	template <typename TypeT> TypeT &Get(ExplicitT<TypeT>, UnionT &Union) 
@@ -212,12 +212,12 @@ template <uint8_t Index> struct VariantInternalsT<Index>
 	
 	VariantInternalsT(ThisT &&Other) : Tag(Other.Tag) { Other.Tag = 0; }
 		
-	template <typename CallbackT> 
-		auto Examine(UnionT &Union, CallbackT const &Callback) -> decltype(Callback(nullptr))
+	template <typename ReturnT, typename CallbackT> 
+		ReturnT Examine(UnionT &Union, CallbackT const &Callback)
 		{ return {}; }
 	
-	template <typename CallbackT> 
-		auto Examine(UnionT const &Union, CallbackT const &Callback) const -> decltype(Callback(nullptr))
+	template <typename ReturnT, typename CallbackT> 
+		ReturnT Examine(UnionT const &Union, CallbackT const &Callback) const
 		{ return {}; }
 
 	template <typename TypeT> bool Is(ExplicitT<TypeT>) const { return false; }
@@ -230,8 +230,8 @@ template <uint8_t Index> struct VariantInternalsT<Index>
 	
 	template <typename ValueT> InvalidT &Set(ExplicitT<InvalidT> ValueTag, UnionT &Union, ValueT &&Value) { Tag = 0; return *reinterpret_cast<InvalidT *>(0); }
 	
-	template <typename CallbackT> 
-		auto SetByTag(UnionT &Union, VariantTagT const &Tag, CallbackT const &Callback) -> decltype(Callback(nullptr))
+	template <typename ReturnT, typename CallbackT> 
+		ReturnT SetByTag(UnionT &Union, VariantTagT const &Tag, CallbackT const &Callback) 
 		{ return {}; }
 
 	void Destroy(UnionT &Union) {}
@@ -248,6 +248,8 @@ template <typename... TypesT> struct VariantT : private VariantInternalsT<1, Typ
 		typename InternalsT::UnionT UnionBytes;
 		#define Union this->UnionBytes
 		#define ValueUnion Value.UnionBytes
+
+		using InternalsT::Examine;
 	public:
 		VariantT(void) : InternalsT(0) {}
 		
@@ -288,13 +290,13 @@ template <typename... TypesT> struct VariantT : private VariantInternalsT<1, Typ
 		
 		void Clear(void) { Destroy(Union); this->Tag = 0; }
 
-		template <typename CallbackT> 
-			auto Examine(CallbackT const &Callback) -> decltype(InternalsT::Examine(Callback))
-			{ return InternalsT::Examine(Union, Callback); }
+		template <typename ReturnT, typename CallbackT> 
+			ReturnT Examine(CallbackT const &Callback) 
+			{ return Examine<ReturnT>(Union, Callback); }
 		
-		template <typename CallbackT> 
-			auto Examine(CallbackT const &Callback) const -> decltype(InternalsT::Examine(Callback))
-			{ return InternalsT::Examine(Union, Callback); }
+		template <typename ReturnT, typename CallbackT> 
+			ReturnT Examine(CallbackT const &Callback) const
+			{ return Examine<ReturnT>(Union, Callback); }
 		
 		operator bool(void) const { return this->Tag; }
 		
@@ -338,9 +340,12 @@ template <typename... TypesT> struct VariantT : private VariantInternalsT<1, Typ
 			return InternalsT::Set(ExplicitT<TypeT>(), Union, std::move(Value)); 
 		}
 		
-		template <typename CallbackT> 
-			auto SetByTag(VariantTagT const &Tag, CallbackT const &Callback) -> decltype(InternalsT::SetByTag(Callback))
-			{ return InternalsT::SetByTag(Union, Tag, Callback); }
+		template <typename ReturnT, typename CallbackT> 
+			ReturnT SetByTag(VariantTagT const &Tag, CallbackT const &Callback) 
+			{ return InternalsT::template SetByTag<ReturnT>(Union, Tag, Callback); }
+
+		VariantTagT GetTag(void) const 
+			{ return this->Tag; }
 			
 		template <typename TypeT> TypeT &Get(void) 
 		{ 

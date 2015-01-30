@@ -18,9 +18,16 @@ y = StrictCast(x, MyFloat);
 
 */
 
-template <size_t Uniqueness, typename ValueT, typename Enabled = void> struct ExplicitCastableT;
+template <size_t Uniqueness, typename ValueT, typename Enabled = void> 
+	struct ExplicitCastableT;
+
 template <size_t Uniqueness, typename ValueT> 
-	struct ExplicitCastableT<Uniqueness, ValueT, typename std::enable_if<!std::is_integral<ValueT>::value>::type>
+	struct ExplicitCastableT
+	<
+		Uniqueness, 
+		ValueT, 
+		typename std::enable_if<!std::is_integral<ValueT>::value>::type
+	>
 {
 	typedef ExplicitCastableT<Uniqueness, ValueT> ThisT;
 	
@@ -45,82 +52,95 @@ template <size_t Uniqueness, typename ValueT>
 	typedef ValueT Type;
 	ValueT Value;
 };
-template <size_t Uniqueness, typename ValueT> constexpr size_t ExplicitCastableT<Uniqueness, ValueT, typename std::enable_if<!std::is_integral<ValueT>::value>::type>::Size;
+template <size_t Uniqueness, typename ValueT> 
+	constexpr size_t ExplicitCastableT
+	<
+		Uniqueness, 
+		ValueT, 
+		typename std::enable_if<!std::is_integral<ValueT>::value>::type
+	>::Size;
 
-template <size_t Uniqueness, typename ValueT> struct ExplicitCastableT<Uniqueness, ValueT, typename std::enable_if<std::is_integral<ValueT>::value>::type>
+template <size_t Uniqueness, typename ValueT> 
+	struct ExplicitCastableT
+	<
+		Uniqueness, 
+		ValueT, 
+		typename std::enable_if<std::is_integral<ValueT>::value>::type
+	>
 {
-	typedef ExplicitCastableT<Uniqueness, ValueT> ThisType;
+	typedef ExplicitCastableT<Uniqueness, ValueT> ThisT;
 
 	constexpr ExplicitCastableT(void) {}
-	constexpr ExplicitCastableT(ThisType const &That) : Value(*That) {}
+	constexpr ExplicitCastableT(ThisT const &That) : Value(*That) {}
 	explicit constexpr ExplicitCastableT(ValueT const &That) : Value(That) {}
-	template <typename ThatType> explicit constexpr ExplicitCastableT(ThatType const &That) : Value(static_cast<ValueT>(That)) {}
+	template <typename ThatT> 
+		explicit constexpr ExplicitCastableT(ThatT const &That) : Value(static_cast<ValueT>(That)) {}
 
 	ValueT &operator *(void) { return Value; }
 	constexpr ValueT const &operator *(void) const { return Value; }
 	constexpr static size_t Size = sizeof(ValueT);
 
-	constexpr ThisType operator +(ThisType const &That) const { return ThisType(Value + *That); }
-	constexpr ThisType operator +(ValueT const &That) const { return ThisType(Value + That); }
-	template <typename ThatType> ThisType operator +(ThatType const &) const = delete;
+	constexpr ThisT operator +(ThisT const &That) const { return ThisT(Value + *That); }
+	constexpr ThisT operator +(ValueT const &That) const { return ThisT(Value + That); }
+	template <typename ThatT> ThisT operator +(ThatT const &) const = delete;
 
-	constexpr ThisType operator -(ThisType const &That) const { return ThisType(Value - *That); }
-	constexpr ThisType operator -(ValueT const &That) const { return ThisType(Value - That); }
-	template <typename ThatType> ThisType operator -(ThatType const &) const = delete;
+	constexpr ThisT operator -(ThisT const &That) const { return ThisT(Value - *That); }
+	constexpr ThisT operator -(ValueT const &That) const { return ThisT(Value - That); }
+	template <typename ThatT> ThisT operator -(ThatT const &) const = delete;
 
-	constexpr ThisType operator *(ThisType const &That) const { return ThisType(Value * *That); }
-	constexpr ThisType operator *(ValueT const &That) const { return ThisType(Value * That); }
-	template <typename ThatType> ThisType operator *(ThatType const &) const = delete;
+	constexpr ThisT operator *(ThisT const &That) const { return ThisT(Value * *That); }
+	constexpr ThisT operator *(ValueT const &That) const { return ThisT(Value * That); }
+	template <typename ThatT> ThisT operator *(ThatT const &) const = delete;
 
-	constexpr ThisType operator /(ThisType const &That) const { return ThisType(Value / *That); }
-	constexpr ThisType operator /(ValueT const &That) const { return ThisType(Value / That); }
-	template <typename ThatType> ThisType operator /(ThatType const &) const = delete;
+	constexpr ThisT operator /(ThisT const &That) const { return ThisT(Value / *That); }
+	constexpr ThisT operator /(ValueT const &That) const { return ThisT(Value / That); }
+	template <typename ThatT> ThisT operator /(ThatT const &) const = delete;
 
-	template <typename ThatType> ThisType operator +=(ThatType const &) = delete;
-	ThisType operator +=(ThisType const &That) { return ThisType(Value += *That); }
-	ThisType operator +=(ValueT const &That) { return ThisType(Value += That); }
+	template <typename ThatT> ThisT operator +=(ThatT const &) = delete;
+	ThisT operator +=(ThisT const &That) { return ThisT(Value += *That); }
+	ThisT operator +=(ValueT const &That) { return ThisT(Value += That); }
 
-	ThisType operator ++(void) { return ++**this; }
-	ThisType operator ++(int) { auto Out = ThisType(**this); ++**this; return Out; }
+	ThisT operator ++(void) { return ThisT(++**this); }
+	ThisT operator ++(int) { auto Out = ThisT(**this); ThisT(++**this); return Out; }
 
-	ThisType operator -=(ThisType const &That) { return ThisType(Value -= *That); }
-	ThisType operator -=(ValueT const &That) { return ThisType(Value -= That); }
-	template <typename ThatType> ThisType operator -=(ThatType const &) = delete;
+	ThisT operator -=(ThisT const &That) { return ThisT(Value -= *That); }
+	ThisT operator -=(ValueT const &That) { return ThisT(Value -= That); }
+	template <typename ThatT> ThisT operator -=(ThatT const &) = delete;
 
-	ThisType operator --(void) { return --**this; }
-	ThisType operator --(int) { auto Out = ThisType(**this); --**this; return Out; }
+	ThisT operator --(void) { return --**this; }
+	ThisT operator --(int) { auto Out = ThisT(**this); --**this; return Out; }
 
-	ThisType operator *=(ThisType const &That) { return ThisType(Value *= *That); }
-	ThisType operator *=(ValueT const &That) { return ThisType(Value *= That); }
-	template <typename ThatType> ThisType operator *=(ThatType const &) = delete;
+	ThisT operator *=(ThisT const &That) { return ThisT(Value *= *That); }
+	ThisT operator *=(ValueT const &That) { return ThisT(Value *= That); }
+	template <typename ThatT> ThisT operator *=(ThatT const &) = delete;
 
-	ThisType operator /=(ThisType const &That) { return ThisType(Value /= *That); }
-	ThisType operator /=(ValueT const &That) { return ThisType(Value /= That); }
-	template <typename ThatType> ThisType operator /=(ThatType const &) = delete;
+	ThisT operator /=(ThisT const &That) { return ThisT(Value /= *That); }
+	ThisT operator /=(ValueT const &That) { return ThisT(Value /= That); }
+	template <typename ThatT> ThisT operator /=(ThatT const &) = delete;
 
-	constexpr bool operator ==(ThisType const &That) const { return Value == *That; }
+	constexpr bool operator ==(ThisT const &That) const { return Value == *That; }
 	constexpr bool operator ==(ValueT const &That) const { return Value == That; }
-	template <typename ThatType> constexpr bool operator ==(ThatType const &) const = delete;
+	template <typename ThatT> constexpr bool operator ==(ThatT const &) const = delete;
 
-	constexpr bool operator !=(ThisType const &That) const { return Value != *That; }
+	constexpr bool operator !=(ThisT const &That) const { return Value != *That; }
 	constexpr bool operator !=(ValueT const &That) const { return Value != That; }
-	template <typename ThatType> constexpr bool operator !=(ThatType const &) const = delete;
+	template <typename ThatT> constexpr bool operator !=(ThatT const &) const = delete;
 
-	constexpr bool operator <(ThisType const &That) const { return Value < *That; }
+	constexpr bool operator <(ThisT const &That) const { return Value < *That; }
 	constexpr bool operator <(ValueT const &That) const { return Value < That; }
-	template <typename ThatType> constexpr bool operator <(ThatType const &) const = delete;
+	template <typename ThatT> constexpr bool operator <(ThatT const &) const = delete;
 
-	constexpr bool operator >(ThisType const &That) const { return Value > *That; }
+	constexpr bool operator >(ThisT const &That) const { return Value > *That; }
 	constexpr bool operator >(ValueT const &That) const { return Value > That; }
-	template <typename ThatType> constexpr bool operator >(ThatType const &) const = delete;
+	template <typename ThatT> constexpr bool operator >(ThatT const &) const = delete;
 
-	constexpr bool operator <=(ThisType const &That) const { return Value <= *That; }
+	constexpr bool operator <=(ThisT const &That) const { return Value <= *That; }
 	constexpr bool operator <=(ValueT const &That) const { return Value <= That; }
-	template <typename ThatType> constexpr bool operator <=(ThatType const &) const = delete;
+	template <typename ThatT> constexpr bool operator <=(ThatT const &) const = delete;
 
-	constexpr bool operator >=(ThisType const &That) const { return Value >= *That; }
+	constexpr bool operator >=(ThisT const &That) const { return Value >= *That; }
 	constexpr bool operator >=(ValueT const &That) const { return Value >= That; }
-	template <typename ThatType> constexpr bool operator >=(ThatType const &) const = delete;
+	template <typename ThatT> constexpr bool operator >=(ThatT const &) const = delete;
 	
 	typedef ValueT Type;
 	ValueT Value;

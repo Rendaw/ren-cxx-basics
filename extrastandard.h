@@ -30,6 +30,32 @@ template <typename ValueT> struct IsTuply
 template <typename ...InnerT> struct IsTuply<std::tuple<InnerT...>> 
 	{ static constexpr bool Result = true; };
 
+// Streaming tuples
+template <typename NextT, typename ...InnerT>
+	void StreamTupleElement(std::ostream &Stream, std::tuple<InnerT...> const &Value)
+{
+	Stream << std::get<sizeof...(InnerT) - 1>(Value);
+}
+
+template <typename NextT, typename RemainingFirstT, typename ...RemainingT, typename ...InnerT>
+	void StreamTupleElement(std::ostream &Stream, std::tuple<InnerT...> const &Value)
+{
+	Stream << std::get<sizeof...(InnerT) - sizeof...(RemainingT) - 2>(Value) << ", ";
+	StreamTupleElement<RemainingFirstT, RemainingT...>(Stream, Value);
+}
+
+template <typename InnerFirstT, typename ...InnerRemainingT>
+	std::ostream &operator <<(std::ostream &Stream, std::tuple<InnerFirstT, InnerRemainingT...> const &Value)
+{
+	Stream << "tuple(";
+	StreamTupleElement<InnerFirstT, InnerRemainingT...>(Stream, Value);
+	Stream << ")";
+	return Stream;
+}
+
+inline std::ostream &operator <<(std::ostream &Stream, std::tuple<> const &Value)
+	{ return Stream << "tuple()"; }
+
 //----------------------------------------------------------------------------------------------------------------
 // Remove values for vector
 template <typename VectorT, typename FunctionT> void VectorRemove(VectorT &Vector, FunctionT const &Filter)
