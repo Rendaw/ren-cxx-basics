@@ -292,11 +292,11 @@ template <typename... TypesT> struct VariantT : private VariantInternalsT<1, Typ
 
 		template <typename ReturnT, typename CallbackT> 
 			ReturnT Examine(CallbackT const &Callback) 
-			{ return Examine<ReturnT>(Union, Callback); }
+			{ return InternalsT::template Examine<ReturnT>(Union, Callback); }
 		
 		template <typename ReturnT, typename CallbackT> 
 			ReturnT Examine(CallbackT const &Callback) const
-			{ return Examine<ReturnT>(Union, Callback); }
+			{ return InternalsT::template Examine<ReturnT>(Union, Callback); }
 		
 		operator bool(void) const { return this->Tag; }
 		
