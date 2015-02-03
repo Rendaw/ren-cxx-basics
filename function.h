@@ -1,5 +1,5 @@
-#ifndef ren_function
-#define ren_function
+#ifndef ren_cxx_basics__function_h
+#define ren_cxx_basics__function_h
 #include <stdexcept>
 #include <utility>
 #include <cassert>

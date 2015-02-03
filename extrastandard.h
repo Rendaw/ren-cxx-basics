@@ -4,10 +4,20 @@
 #include <memory>
 #include <sstream>
 #include <iostream>
-#include <functional>
 #include <algorithm>
 
+#include "function.h"
+
 template <typename TargetT> struct ExplicitT {};
+
+struct FinallyT
+{
+	function<void(void)> Callback;
+
+	inline FinallyT(function<void(void)> &&Callback) : Callback(Callback) {}
+	inline FinallyT(function<void(void)> const &Callback) : Callback(Callback) {}
+	~FinallyT(void) { Callback(); }
+};
 
 //----------------------------------------------------------------------------------------------------------------
 // Will be included in C++14 lolololol
