@@ -319,6 +319,28 @@ template <typename... TypesT> struct VariantT : private VariantInternalsT<1, Typ
 			
 		VariantT<TypesT...> &operator =(VariantT<TypesT...> &&Value) 
 			{ InternalsT::Set(Union, std::move(ValueUnion), Value.Tag); return *this; }
+
+		bool operator ==(VariantT<TypesT...> const &Other) const
+		{ 
+			return (this->Tag == Other.Tag) &&
+				(
+					(this->Tag == 0) || 
+					Examine<bool>([&](auto const &ThisValue) 
+					{
+						return 
+							ThisValue == 
+							Other.template Get<
+								typename std::remove_const<
+									typename std::remove_reference<
+										decltype(ThisValue)>::type>::type>();
+					})
+				);
+		}
+
+		bool operator !=(VariantT<TypesT...> const &Other) const
+		{
+			return !(*this == Other);
+		}
 		
 		void Unset(void) { InternalsT::Set(ExplicitT<typename InternalsT::InvalidT>(), Union, 0); }
 		
