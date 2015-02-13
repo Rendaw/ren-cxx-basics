@@ -61,6 +61,9 @@ struct function<return_type(arg_types ...)>
 		}
 
 		template <typename lambda_type> 
+		void set_no_clear(lambda_type const &&lambda) = delete;
+
+		template <typename lambda_type> 
 		void set_no_clear(lambda_type &&lambda)
 		{
 			data = new lambda_type(std::move(lambda));
