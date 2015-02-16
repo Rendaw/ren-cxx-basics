@@ -140,6 +140,7 @@ struct StringT
 	StringT(std::string const &Initial) : Buffer(Initial) {}
 	template <typename Whatever> StringT &operator <<(Whatever const &Input) { Buffer << Input; return *this; }
 	template <typename Whatever> StringT &operator >>(Whatever &Output) { Buffer >> Output; return *this; }
+	operator bool(void) const { return Buffer; }
 	bool operator !(void) const { return !Buffer; }
 	decltype(Buffer.str()) str(void) const { return Buffer.str(); }
 	operator std::string(void) const { return Buffer.str(); }
