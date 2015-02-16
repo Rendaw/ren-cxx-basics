@@ -121,7 +121,7 @@ struct function<return_type(arg_types ...)>
 		function<return_type(arg_types...)> &operator =(function<return_type(arg_types...)> const &other) 
 			{ set(other); return *this; }
 		
-		function<return_type(arg_types...)> &operator =(function<return_type(arg_types...)> const &&other) 
+		function<return_type(arg_types...)> &operator =(function<return_type(arg_types...)> &&other) 
 			{ set(std::move(other)); return *this; }
 
 		operator bool(void) const { return data; }

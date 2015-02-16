@@ -14,9 +14,19 @@ struct FinallyT
 {
 	function<void(void)> Callback;
 
+	FinallyT(FinallyT const &) = delete;
+	inline FinallyT(FinallyT &&Other) : Callback(std::move(Other.Callback))
+		{ Other.Callback = {}; }
 	inline FinallyT(function<void(void)> &&Callback) : Callback(Callback) {}
 	inline FinallyT(function<void(void)> const &Callback) : Callback(Callback) {}
-	~FinallyT(void) { Callback(); }
+	inline FinallyT &operator =(FinallyT const &) = delete;
+	inline FinallyT &operator =(FinallyT &&Other)
+	{ 
+		Callback = std::move(Other.Callback); 
+		Other.Callback = {}; 
+		return *this;
+	}
+	~FinallyT(void) { if (Callback) Callback(); }
 };
 
 //----------------------------------------------------------------------------------------------------------------
