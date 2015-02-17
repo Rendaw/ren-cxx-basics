@@ -140,7 +140,6 @@ struct StringT
 	StringT(std::string const &Initial) : Buffer(Initial) {}
 	template <typename Whatever> StringT &operator <<(Whatever const &Input) { Buffer << Input; return *this; }
 	template <typename Whatever> StringT &operator >>(Whatever &Output) { Buffer >> Output; return *this; }
-	operator bool(void) const { return Buffer; }
 	bool operator !(void) const { return !Buffer; }
 	decltype(Buffer.str()) str(void) const { return Buffer.str(); }
 	operator std::string(void) const { return Buffer.str(); }
@@ -176,6 +175,9 @@ template <typename ArgT, typename std::enable_if<std::is_enum<ArgT>::value>::typ
 	inline std::string AssertString(ArgT const &Arg)
 	{ return StringT() << static_cast<typename std::underlying_type<ArgT>::type>(Arg); }
 
+inline int AssertString(char const &Arg)
+	{ return Arg; }
+
 template <typename Type> inline bool AssertImplementation(char const *File, char const *Function, int Line, char const *ValueString, Type const &Value)
 {
 #ifndef NDEBUG
@@ -189,7 +191,93 @@ template <typename Type> inline bool AssertImplementation(char const *File, char
 	return !!Value;
 }
 
-template <typename GotType, typename ExpectedType> inline bool AssertImplementationE(char const *File, char const *Function, int Line, char const *GotString, GotType const &Got, char const *ExpectedString, ExpectedType const &Expected)
+template <typename ValueT> struct IsVector
+	{ static constexpr bool Result = false; };
+template <typename InnerT> struct IsVector<std::vector<InnerT>> 
+	{ static constexpr bool Result = true; };
+
+template <typename ValueT, typename std::enable_if<IsVector<ValueT>::Result>::type * = nullptr> 
+	inline bool AssertImplementationE(
+		char const *File, 
+		char const *Function, 
+		int Line, 
+		char const *GotString, 
+		ValueT const &Got, 
+		char const *ExpectedString, 
+		ValueT const &Expected)
+{
+	size_t Offset = 0;
+	auto GotIter = Got.begin();
+	auto ExpectedIter = Expected.begin();
+
+	while ((GotIter != Got.end()) && (ExpectedIter != Expected.end()))
+	{
+		if (*GotIter != *ExpectedIter)
+		{
+#ifndef NDEBUG
+			AssertStamp(File, Function, Line);
+			std::cerr << 
+				"Got (" << GotString << ", index " << Offset << ") '" << *GotIter << "'"
+				" != "
+				"expected (" << ExpectedString << ", index " << Offset << ") '" << AssertString(*ExpectedIter) << "'" <<
+				std::endl;
+			throw false;
+#endif
+			return false;
+		}
+		++Offset;
+		++GotIter;
+		++ExpectedIter;
+	}
+
+	if ((GotIter == Got.end()) && (ExpectedIter == Expected.end())) 
+		return true;
+
+	if (ExpectedIter != Expected.end())
+	{
+#ifndef NDEBUG
+		AssertStamp(File, Function, Line);
+		std::cerr << 
+			"Got (" << GotString << ", length " << Offset << ")"
+			" shorter than "
+			"expected (" << ExpectedString << ")" <<
+			std::endl;
+		throw false;
+#endif
+		return false;
+	}
+
+	if (GotIter != Got.end())
+	{
+#ifndef NDEBUG
+		AssertStamp(File, Function, Line);
+		std::cerr << 
+			"Got (" << GotString << ")"
+			" longer than "
+			"expected (" << ExpectedString << ", length " << Offset << ")" <<
+			std::endl;
+		throw false;
+#endif
+		return false;
+	}
+
+	return true;
+}
+
+template 
+<
+	typename GotType, 
+	typename ExpectedType, 
+	typename std::enable_if<!IsVector<ExpectedType>::Result>::type * = nullptr
+>
+	inline bool AssertImplementationE(
+		char const *File, 
+		char const *Function, 
+		int Line, 
+		char const *GotString, 
+		GotType const &Got, 
+		char const *ExpectedString, 
+		ExpectedType const &Expected)
 {
 	bool Result = Got == Expected;
 #ifndef NDEBUG
