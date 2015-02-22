@@ -14,16 +14,21 @@ struct FinallyT
 {
 	function<void(void)> Callback;
 
+	FinallyT(void) {}
 	FinallyT(FinallyT const &) = delete;
 	inline FinallyT(FinallyT &&Other) : Callback(std::move(Other.Callback))
 		{ Other.Callback = {}; }
 	inline FinallyT(function<void(void)> &&Callback) : Callback(Callback) {}
-	inline FinallyT(function<void(void)> const &Callback) : Callback(Callback) {}
 	inline FinallyT &operator =(FinallyT const &) = delete;
 	inline FinallyT &operator =(FinallyT &&Other)
 	{ 
 		Callback = std::move(Other.Callback); 
 		Other.Callback = {}; 
+		return *this;
+	}
+	inline FinallyT &operator =(function<void(void)> &&Callback) 
+	{
+		this->Callback = std::move(Callback);
 		return *this;
 	}
 	~FinallyT(void) { if (Callback) Callback(); }
@@ -175,8 +180,8 @@ template <typename ArgT, typename std::enable_if<std::is_enum<ArgT>::value>::typ
 	inline std::string AssertString(ArgT const &Arg)
 	{ return StringT() << static_cast<typename std::underlying_type<ArgT>::type>(Arg); }
 
-inline int AssertString(char const &Arg)
-	{ return Arg; }
+inline std::string AssertString(unsigned char const &Arg)
+	{ return StringT() << (int)Arg; }
 
 template <typename Type> inline bool AssertImplementation(char const *File, char const *Function, int Line, char const *ValueString, Type const &Value)
 {
@@ -217,7 +222,7 @@ template <typename ValueT, typename std::enable_if<IsVector<ValueT>::Result>::ty
 #ifndef NDEBUG
 			AssertStamp(File, Function, Line);
 			std::cerr << 
-				"Got (" << GotString << ", index " << Offset << ") '" << *GotIter << "'"
+				"Got (" << GotString << ", index " << Offset << ") '" << AssertString(*GotIter) << "'"
 				" != "
 				"expected (" << ExpectedString << ", index " << Offset << ") '" << AssertString(*ExpectedIter) << "'" <<
 				std::endl;
